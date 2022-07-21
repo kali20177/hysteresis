@@ -38,6 +38,7 @@ std::vector<double> generate_vol_seq(const double& v1, const double& v2)
 
 		vol_seq[i] = vol;
 	}
+	//temp = new_vol;
 	return vol_seq;
 }
 
@@ -86,6 +87,7 @@ double shape_control_fun(int data_num, int data_size, const double* parameter)
 {
 	double mid_pra = 0;
 	double part = (double)data_num / data_size;
+
 	if (part < 0.125)
 		mid_pra = *(parameter + 3);
 	else if (part < 0.25)
@@ -165,7 +167,6 @@ std::vector<double> feed_forward(const double* parameter, const std::vector<doub
 	}
 	return u_ff;
 }
-
 
 std::vector<double> predict_disp(const double* parameter, const std::vector<double>& input_vol, const double v1, const double v2)
 {
