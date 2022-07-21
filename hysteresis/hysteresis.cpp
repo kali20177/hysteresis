@@ -42,6 +42,23 @@ std::vector<double> generate_vol_seq(const double& v1, const double& v2)
 	return vol_seq;
 }
 
+std::vector<double> generate_disp_seq(const double& d1, const double& d2)
+{
+	std::vector<double> disp_seq(count, 0);
+
+	for (int i = 0; i < count; ++i)
+	{
+		double disp;
+		if (d2 >= d1)
+			disp = fabs((d2 - d1) / 2) * sin(2 * M_PI * (i + 1) / (2 * count) - M_PI / 2) + fabs((d2 - d1) / 2) + min(d2, d1);
+		else
+			disp = fabs((d2 - d1) / 2) * sin(2 * M_PI * (i + 1) / (2 * count) + M_PI / 2) + fabs((d2 - d1) / 2) + min(d2, d1);
+
+		disp_seq[i] = disp;
+	}
+	return disp_seq;
+}
+
 //double shape_control_fun(int data_num, int data_size, double* arr)
 //{
 //	double mid_pra = 0;
@@ -147,22 +164,32 @@ std::vector<double> feed_forward(const double* parameter, const std::vector<doub
 	y = *(parameter + 2);
 	eta = *(parameter + 11);
 
+	double mid_prameter = 0;
+
 	std::vector<double> u_ff(input_displace.size(), 0);  //前馈电压
 	std::vector<double> d_uff(input_displace.size(), 0);  //前馈电压倒数
 	std::vector<double> d_dis(input_displace.size(), 0);  //目标位移导数
 	std::vector<double> mid_h(input_displace.size(), 0);  //中间变量
 
-	for (int i = 0; i < input_displace.size(); ++i)
+	for (int i = 0; i < input_displace.size() - 1; ++i)
 	{
-		d_dis.emplace_back((input_displace[i + 1] - input_displace[i]) / interval);
+		d_dis[i] = ((input_displace[i + 1] - input_displace[i]) / interval);
 	}
 
 	u_ff[1] = 1 / k * (input_displace[1] + mid_h[0] + eta * d_dis[1]);
 
-	for (int i = 0; i < input_displace.size(); ++i)
+	for (int i = 2; i < input_displace.size(); ++i)
 	{
+		const int m = (i - 2) / count;
+		const int n = (i - 2) % count;
+
+		if (m % 2 == 0)
+			mid_prameter = shape_control_fun1(n, count, parameter);
+		else
+			mid_prameter = shape_control_fun2(n, count, parameter);
+
 		d_uff[i - 2] = (u_ff[i - 1] - u_ff[i - 2]) / interval;
-		mid_h[i - 1] = mid_h[i - 2] + interval * d_uff[i - 2] * (a - fabs(mid_h[i - 2]) * (y));
+		mid_h[i - 1] = mid_h[i - 2] + interval * d_uff[i - 2] * (a - fabs(mid_h[i - 2]) * (y + mid_prameter));
 		u_ff[i] = 1 / k * (input_displace[i] + mid_h[i - 1] + eta * d_dis[i]);
 	}
 	return u_ff;
@@ -260,30 +287,36 @@ int main()
 
 	double parameter_50[12] = { 0.106678, 0.033195, 0.040417, -0.048901, -0.013362,	0.003823, -0.012365, -0.062161, -0.030806, -0.006678, 0.005098, 0.000386 };
 
-	std::vector<double> temp_vol1 = generate_vol_seq(0.0, 150.0);
+	/*std::vector<double> temp_vol1 = generate_vol_seq(0.0, 150.0);
 	std::vector<double> temp_vol2 = generate_vol_seq(150.0, 0.0);
 	std::vector<double> temp_vol3 = generate_vol_seq(0.0, 150.0);
 	std::vector<double> temp_vol4 = generate_vol_seq(150.0, 20.0);
 	std::vector<double> temp_vol5 = generate_vol_seq(20.0, 100.0);
 	std::vector<double> temp_vol6 = generate_vol_seq(100.0, 70.0);
-	std::vector<double> temp_vol7 = generate_vol_seq(70.0, 40.0);
+	std::vector<double> temp_vol7 = generate_vol_seq(70.0, 40.0);*/
 	/*std::vector<double> temp_vol3 = generate_vol_seq(0.0, 130.0);
 	std::vector<double> temp_vol4 = generate_vol_seq(0.0, 110.0);
 	std::vector<double> temp_vol5 = generate_vol_seq(0.0, 80.0); */
 
+	//temp_vol1 = temp_vol1 + temp_vol2 + temp_vol3 + temp_vol4 + temp_vol5 + temp_vol6 + temp_vol7;
 
-	temp_vol1 = temp_vol1 + temp_vol2 + temp_vol3 + temp_vol4 + temp_vol5 + temp_vol6 + temp_vol7;
+	//const std::vector<double>  e1 = predict_disp(parameter_50, temp_vol1);
 
-	const std::vector<double>  e1 = predict_disp(parameter_50, temp_vol1);
 
-	//const std::vector<double>  e2 = predict_disp(parameter_50, temp_vol2, 150.0, 0.0);
-	//const std::vector<double>  e3 = predict_disp(parameter_50, temp_vol2, 0.0, 120.0);
-	//const std::vector<double>  e4 = predict_disp(parameter_50, temp_vol2, 120.0, 60.0);
+	std::vector<double> temp_disp1 = generate_disp_seq(0.0, 10.0);
+	std::vector<double> temp_disp2 = generate_disp_seq(10.0, 0.0);
+	std::vector<double> temp_disp3 = generate_disp_seq(0.0, 8.0);
+	std::vector<double> temp_disp4 = generate_disp_seq(8.0, 5.0);
+
+	temp_disp1 = temp_disp1 + temp_disp2 + temp_disp3 + temp_disp4;
+
+	const std::vector<double> u = feed_forward(parameter_50, temp_disp1);
+	const std::vector<double>  e1 = predict_disp(parameter_50, u);
 
 	/* 绘图 */
 	//plot(temp_vol1);
-
-	plot(temp_vol1, e1);
+	plot(temp_disp1, e1);
+	//plot(temp_vol1, e1);
 	//plot(temp_vol2, e2);
 	//plot(temp_vol3, e3);
 	//plot(temp_vol4, e4);
