@@ -2,12 +2,13 @@
 #include <Windows.h>
 #include <matplotlibcpp.h>
 #include <fstream>
+#include <chrono>
 
 using namespace matplotlibcpp;
 
 #define M_PI 3.14159265358979323846
 
-double interval = 0.00002; // 50 hz 时间间隔 count = 1000
+double interval = 0.8e-04; // 50 hz 时间间隔 count = 250
 
 //double shape_control_fun(int data_num, int data_size, double* arr);
 
@@ -22,7 +23,7 @@ std::vector<T>& operator+(std::vector<T>& v1, std::vector<T>& v2)
 //产生两点之间序列
 //double temp = 0.0;
 
-int count = 1000; // 周期点数
+int count = 125; // 周期点数
 
 std::vector<double> generate_vol_seq(const double& v1, const double& v2)
 {
@@ -227,27 +228,6 @@ std::vector<double> predict_disp(const double* parameter, const std::vector<doub
 		else
 			mid_prameter = shape_control_fun2(n, count, parameter);
 
-		/*if (i < count + 1)
-			mid_prameter = shape_control_fun(i, count, parameter);
-		else if (i < count * 2)
-			mid_prameter = shape_control_fun(i - count, count, parameter);
-		else if (i < count * 3)
-			mid_prameter = shape_control_fun(i - 2 * count, count, parameter);
-		else if (i < count * 4)
-			mid_prameter = shape_control_fun(i - 3 * count, count, parameter);
-		else if (i < count * 5)
-			mid_prameter = shape_control_fun(i - 4 * count, count, parameter);
-		else if (i < count * 6)
-			mid_prameter = shape_control_fun(i - 5 * count, count, parameter);
-		else if (i < count * 7)
-			mid_prameter = shape_control_fun(i - 6 * count, count, parameter);
-		else if (i < count * 8)
-			mid_prameter = shape_control_fun(i - 7 * count, count, parameter);
-		else if (i < count * 9)
-			mid_prameter = shape_control_fun(i - 8 * count, count, parameter);
-		else if (i < count * 10)
-			mid_prameter = shape_control_fun(i - 9 * count, count, parameter);*/
-
 		e_hystery[i + 1] = e_hystery[i] + interval * d_input[i] * (a - fabs(e_hystery[i]) * (y + mid_prameter));
 	}
 
@@ -287,38 +267,78 @@ int main()
 
 	double parameter_50[12] = { 0.106678, 0.033195, 0.040417, -0.048901, -0.013362,	0.003823, -0.012365, -0.062161, -0.030806, -0.006678, 0.005098, 0.000386 };
 
-	/*std::vector<double> temp_vol1 = generate_vol_seq(0.0, 150.0);
+	double parameter_test[12] = { 0.104306, 0.037403, 0.061202, -0.074779, -0.039451, -0.012421, -0.019009, -0.063548, -0.019830, 0.005491, 0.024191, 0.000315 };   // 50HZ 一周期 250点
+
+	std::vector<double> temp_vol1 = generate_vol_seq(0.0, 150.0);
 	std::vector<double> temp_vol2 = generate_vol_seq(150.0, 0.0);
 	std::vector<double> temp_vol3 = generate_vol_seq(0.0, 150.0);
 	std::vector<double> temp_vol4 = generate_vol_seq(150.0, 20.0);
 	std::vector<double> temp_vol5 = generate_vol_seq(20.0, 100.0);
 	std::vector<double> temp_vol6 = generate_vol_seq(100.0, 70.0);
-	std::vector<double> temp_vol7 = generate_vol_seq(70.0, 40.0);*/
+	std::vector<double> temp_vol7 = generate_vol_seq(70.0, 40.0);
 	/*std::vector<double> temp_vol3 = generate_vol_seq(0.0, 130.0);
 	std::vector<double> temp_vol4 = generate_vol_seq(0.0, 110.0);
 	std::vector<double> temp_vol5 = generate_vol_seq(0.0, 80.0); */
 
-	//temp_vol1 = temp_vol1 + temp_vol2 + temp_vol3 + temp_vol4 + temp_vol5 + temp_vol6 + temp_vol7;
+	temp_vol1 = temp_vol1 + temp_vol2 + temp_vol3 + temp_vol4 + temp_vol5 + temp_vol6 + temp_vol7;
 
-	//const std::vector<double>  e1 = predict_disp(parameter_50, temp_vol1);
+	const std::vector<double>  e1 = predict_disp(parameter_test, temp_vol1);
 
-
+	/** 初始 位移 0 ~ 150 回环**/
 	std::vector<double> temp_disp1 = generate_disp_seq(0.0, 10.0);
 	std::vector<double> temp_disp2 = generate_disp_seq(10.0, 0.0);
-	std::vector<double> temp_disp3 = generate_disp_seq(0.0, 8.0);
-	std::vector<double> temp_disp4 = generate_disp_seq(8.0, 5.0);
+	temp_disp1 = temp_disp1 + temp_disp2;
+	/** 初始 位移 0 ~ 150 回环**/
 
-	temp_disp1 = temp_disp1 + temp_disp2 + temp_disp3 + temp_disp4;
+	std::vector<double> temp_disp3 = generate_disp_seq(0.0, 8.2);
+	temp_disp1 = temp_disp1 + temp_disp3;
+	const std::vector<double> u1 = feed_forward(parameter_test, temp_disp1);
+	std::cout << u1.back() << "V" << "\n";
 
-	const std::vector<double> u = feed_forward(parameter_50, temp_disp1);
-	const std::vector<double>  e1 = predict_disp(parameter_50, u);
+	std::vector<double> temp_disp4 = generate_disp_seq(8.2, 5.7);
+	temp_disp1 = temp_disp1 + temp_disp4;
+	const std::vector<double> u2 = feed_forward(parameter_test, temp_disp1);
+	std::cout << u2.back() << "V" << "\n";
+
+	std::vector<double> temp_disp5 = generate_disp_seq(5.7, 2.2);
+	temp_disp1 = temp_disp1 + temp_disp5;
+	const std::vector<double> u3 = feed_forward(parameter_test, temp_disp1);
+	std::cout << u3.back() << "V" << "\n";
+
+	std::vector<double> temp_disp6 = generate_disp_seq(2.2, 6.1);
+	temp_disp1 = temp_disp1 + temp_disp6;
+	const std::vector<double> u4 = feed_forward(parameter_test, temp_disp1);
+	std::cout << u4.back() << "V" << "\n";
+
+	std::vector<double> temp_disp7 = generate_disp_seq(6.1, 3.6);
+	temp_disp1 = temp_disp1 + temp_disp7;
+	const std::vector<double> u5 = feed_forward(parameter_test, temp_disp1);
+	std::cout << u5.back() << "V" << "\n";
+
+	std::vector<double> temp_disp8 = generate_disp_seq(3.6, 4.3);
+	temp_disp1 = temp_disp1 + temp_disp8;
+	const std::vector<double> u = feed_forward(parameter_test, temp_disp1);
+	std::cout << u.back() << "V" << "\n";
+
+	const std::vector<double>  e2 = predict_disp(parameter_test, u);
+
 
 	/* 绘图 */
+	subplot(1, 3, 1);
 	//plot(temp_vol1);
-	plot(temp_disp1, e1);
-	//plot(temp_vol1, e1);
-	//plot(temp_vol2, e2);
-	//plot(temp_vol3, e3);
-	//plot(temp_vol4, e4);
+	plot(temp_vol1, e1);
+	//xlabel("input displace");
+	//ylabel("after control");
+
+	subplot(1, 3, 2);
+	//plot(e1);
+	plot(temp_disp1, e2);
+
+	subplot(1, 3, 3);
+	//plot(e1);
+	plot(u, e2);
+
 	show();
 }
+
+
