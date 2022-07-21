@@ -32,12 +32,13 @@ std::vector<double> generate_vol_seq(const double& v1, const double& v2)
 	{
 		double vol;
 		if (v2 >= v1)
-			vol = fabs((v2 - v1) / 2) * sin(2 * M_PI * (i + 1) / (1 * count) - M_PI / 2) + fabs((v2 - v1) / 2) + min(v2, v1);
+			vol = fabs((v2 - v1) / 2) * sin(2 * M_PI * (i + 1) / (2 * count) - M_PI / 2) + fabs((v2 - v1) / 2) + min(v2, v1);
 		else
-			vol = fabs((v2 - v1) / 2) * sin(2 * M_PI * (i + 1) / (1 * count) + M_PI / 2) + fabs((v2 - v1) / 2) + min(v2, v1);
+			vol = fabs((v2 - v1) / 2) * sin(2 * M_PI * (i + 1) / (2 * count) + M_PI / 2) + fabs((v2 - v1) / 2) + min(v2, v1);
 
 		vol_seq[i] = vol;
 	}
+	//temp = new_vol;
 	return vol_seq;
 }
 
@@ -86,6 +87,7 @@ double shape_control_fun(int data_num, int data_size, const double* parameter)
 {
 	double mid_pra = 0;
 	double part = (double)data_num / data_size;
+
 	if (part < 0.125)
 		mid_pra = *(parameter + 3);
 	else if (part < 0.25)
@@ -166,8 +168,7 @@ std::vector<double> feed_forward(const double* parameter, const std::vector<doub
 	return u_ff;
 }
 
-
-std::vector<double> predict_disp(const double* parameter, const std::vector<double>& input_vol, const double v1, const double v2)
+std::vector<double> predict_disp(const double* parameter, const std::vector<double>& input_vol)
 {
 	double k, a, y, eta = 0;
 	double mid_prameter = 0;
@@ -191,12 +192,15 @@ std::vector<double> predict_disp(const double* parameter, const std::vector<doub
 
 	for (int i = 0; i < input_vol.size() - 1; ++i)
 	{
-		/*if (i < count)
-			mid_prameter = shape_control_fun1(i, count, parameter);
-		else
-			mid_prameter = shape_control_fun2(i, count, parameter);*/
+		const int m = i / count;
+		const int n = i % count;
 
-		if (i < count)
+		if (m % 2 == 0)
+			mid_prameter = shape_control_fun1(n, count, parameter);
+		else
+			mid_prameter = shape_control_fun2(n, count, parameter);
+
+		/*if (i < count + 1)
 			mid_prameter = shape_control_fun(i, count, parameter);
 		else if (i < count * 2)
 			mid_prameter = shape_control_fun(i - count, count, parameter);
@@ -208,6 +212,14 @@ std::vector<double> predict_disp(const double* parameter, const std::vector<doub
 			mid_prameter = shape_control_fun(i - 4 * count, count, parameter);
 		else if (i < count * 6)
 			mid_prameter = shape_control_fun(i - 5 * count, count, parameter);
+		else if (i < count * 7)
+			mid_prameter = shape_control_fun(i - 6 * count, count, parameter);
+		else if (i < count * 8)
+			mid_prameter = shape_control_fun(i - 7 * count, count, parameter);
+		else if (i < count * 9)
+			mid_prameter = shape_control_fun(i - 8 * count, count, parameter);
+		else if (i < count * 10)
+			mid_prameter = shape_control_fun(i - 9 * count, count, parameter);*/
 
 		e_hystery[i + 1] = e_hystery[i] + interval * d_input[i] * (a - fabs(e_hystery[i]) * (y + mid_prameter));
 	}
@@ -249,27 +261,24 @@ int main()
 	double parameter_50[12] = { 0.106678, 0.033195, 0.040417, -0.048901, -0.013362,	0.003823, -0.012365, -0.062161, -0.030806, -0.006678, 0.005098, 0.000386 };
 
 	std::vector<double> temp_vol1 = generate_vol_seq(0.0, 150.0);
-	std::vector<double> temp_vol2 = generate_vol_seq(0.0, 150.0);
-	std::vector<double> temp_vol3 = generate_vol_seq(0.0, 120.0);
-	std::vector<double> temp_vol4 = generate_vol_seq(0.0, 70.0);
-	std::vector<double> temp_vol5 = generate_vol_seq(0.0, 30.0);
-	//std::vector<double> temp_vol4 = generate_vol_seq(120.0, 60.0);
-	//std::vector<double> temp_vol5 = generate_vol_seq(30.0, 70.0);
+	std::vector<double> temp_vol2 = generate_vol_seq(150.0, 0.0);
+	std::vector<double> temp_vol3 = generate_vol_seq(0.0, 150.0);
+	std::vector<double> temp_vol4 = generate_vol_seq(150.0, 20.0);
+	std::vector<double> temp_vol5 = generate_vol_seq(20.0, 100.0);
+	std::vector<double> temp_vol6 = generate_vol_seq(100.0, 70.0);
+	std::vector<double> temp_vol7 = generate_vol_seq(70.0, 40.0);
+	/*std::vector<double> temp_vol3 = generate_vol_seq(0.0, 130.0);
+	std::vector<double> temp_vol4 = generate_vol_seq(0.0, 110.0);
+	std::vector<double> temp_vol5 = generate_vol_seq(0.0, 80.0); */
 
-	temp_vol1 = temp_vol1 + temp_vol2 + temp_vol3 + temp_vol4 + temp_vol5;
 
-	const std::vector<double>  e1 = predict_disp(parameter_50, temp_vol1, 0.0, 150.0);
+	temp_vol1 = temp_vol1 + temp_vol2 + temp_vol3 + temp_vol4 + temp_vol5 + temp_vol6 + temp_vol7;
+
+	const std::vector<double>  e1 = predict_disp(parameter_50, temp_vol1);
+
 	//const std::vector<double>  e2 = predict_disp(parameter_50, temp_vol2, 150.0, 0.0);
 	//const std::vector<double>  e3 = predict_disp(parameter_50, temp_vol2, 0.0, 120.0);
 	//const std::vector<double>  e4 = predict_disp(parameter_50, temp_vol2, 120.0, 60.0);
-
-	//const std::vector<double>  e2 = predict_disp(parameter_50, temp_vol2, 150.0, 0.0);
-	//std::cout << temp_vol1.size() << d_input.size() << "\n";
-
-	//e1 = e1 + e2;
-
-	/* 导出 */
-
 
 	/* 绘图 */
 	//plot(temp_vol1);
